@@ -1,0 +1,207 @@
+*) Переключение в режим обновления:
+	SQL:
+		call update_mode(1);
+	Success return:
+		status -> 1
+	В данном режиме сайт недоступен, вместо обычного интерфейса отображается уведомление о синхронизации БД.
+	
+*) Получение показаний, добавленных пользователями через сайт:
+	SQL:
+		call get_counters_values();
+	Success return:
+		массив {customer_id, counter_id, date, value, value2) >= 0
+			customer_id - ID пользователя (program_customer_id)
+			counter_id - ID счётчика
+			date - YYYY-MM-DD
+			value - Integer
+			value2 - Integer
+	Данная процедура извлекает из БД сайта неучтённые показания и необходима для занесения их в БД программы.
+	
+*) Получение сообщений, добавленных пользователями через сайт:
+	SQL:
+		call get_messages();
+	Success return:
+		массив {customer, date, message, file_name, file_type, file} >= 0
+			customer - ID пользователя (program_customer_id)
+			date - YYYY-MM-DD HH:II:SS
+			message - Text
+			[optional] file_name - Example: Моя_картинка.jpg
+			[optional] file_type - Example: text/plain
+			[optional] file - Mediumblob
+	Данная процедура извлекает из БД сайта неучтённые сообщения и необходима для занесения их в БД программы.
+
+*) Обновление даты синхронизации :
+	SQL:
+		call update_date();
+	Success return:
+		status -> 1
+	Данная процедура обновляет дату синхронизации БД.
+		
+*) Удаление данных из БД сайта:
+	SQL:
+		call truncate_tables();
+	Success return:
+		status -> 1
+	Данная процедура очищает основные таблицы БД сайта и подготавливает их для занесения эталонных данных.
+		
+*) Добавление компаний в БД сайта:
+	SQL:
+		call set_companies(ID, name);
+			ID - ID компании (program_company_id)
+			name - Название компании
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения компаний в БД сайта.
+	
+*) Добавление домов в БД сайта:
+	SQL:
+		call set_houses(ID, address, company_ID);
+			ID - ID дома (program_house_id)
+			address - Адрес дома
+			company_ID - ID компании, которой принадлежит этот дом (program_company_id)
+			-------
+			P.S. Здесь и далее используются внешние ключи. 
+			Это значит что все таблицы БД связаны между собой и вставить значения, которые нарушают целостность данных будет невозможно.
+			К прим., в данной процедуре невозможно указать company_ID, который не был добавлен ранее с помощью set_companies(...).
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения домов в БД сайта.
+	
+*) Добавление домовых счётчиков в БД сайта:
+	SQL:
+		call set_houses_counters(ID, house_id, service, model, start_date, transformation_coefficient, number_of_tariffs);
+			ID - ID счётчика
+			house_id - ID дома
+			service - Наименование услуги, example: горячая вода
+			model - Модель
+			start_date - Дата начала работы (YYYY-MM-DD)
+			transformation_coefficient - Коэффициент трансформации - 2 знака после запятой
+			number_of_tariffs - Число тарифов для счётчика ( 1 или 2 )
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения домовых счётчиков в БД сайта.
+	
+*) Добавление показаний домовых счётчиков в БД сайта:
+	SQL:
+		call set_houses_counters_values(counterID, date, value, value2);
+			counterID - ID счётчика
+			date - YYYY-MM-DD
+			value - Значение integer
+			value2 - Значение 2 integer
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения показаний домовых счётчиков в БД сайта.
+	
+*) Добавление пользователей в БД сайта:
+	SQL:
+		call set_customers_bridge(ID, password, salt, accountNumber, owner, houseID, flat, totalSpace, livingSpace, residents, phone, email);
+			ID - ID пользователя (program_customer_id)
+			password - Пароль пользователя
+			salt - Строка "соли", необходимой для шифрования данных пользователя
+			accountNumber - Лицевой счёт пользователя
+			owner - ФИО владельца
+			houseID - ID дома, в котором проживает пользователь (program_house_id)
+			flat - Квартира. Example: "кв. 20".
+			totalSpace - Общая площадь, формат - 2 знака после запятой
+			livingSpace - Жилая площадь, формат - 2 знака после запятой
+			residents - Число проживающих
+			phone - Телефон
+			email - Электронная почта пользователя
+			-------
+			P.S. Если какой-то из переменных нет, то вместо неё передаётся либо "", либо 0, в зависимости от типа переменной.
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения пользователей в БД сайта.
+	
+*) Добавление счётчиков в БД сайта:
+	SQL:
+		call set_counters(ID, customerID, service, serial, check_date, start_date, max_value, number_of_tariffs);
+			ID - ID счётчика
+			customerID -  ID пользователя (program_customer_id)
+			service - Наименование услуги, example: горячая вода
+			serial - Серийный номер счётчика
+			check_date - Дата следующей поверки (YYYY-MM-DD)
+			start_date - Дата начала работы (установки) (YYYY-MM-DD)
+			max_value - Максимальное значение передаваемых показаний
+			number_of_tariffs - Число тарифов для счётчика ( 1 или 2 )
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения счётчиков в БД сайта.
+
+*) Добавление показаний в БД сайта:
+	SQL:
+		call set_counters_values(counterID, date, value, value2);
+			counterID - ID счётчика
+			date - YYYY-MM-DD
+			value - Значение integer
+			value2 - Значение 2 integer
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения показаний счётчиков в БД сайта.
+	
+*) Добавление квитанций в БД сайта:
+	SQL:
+		call set_receipts(customerID, date, file, password, salt);
+			customerID - ID пользователя (program_customer_id)
+			date - YYYY-MM-DD
+			file - Mediumblob
+			password - Пароль пользователя
+			salt - Строка "соли", необходимой для шифрования данных пользователя
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения квитанций в БД сайта.
+
+*) Добавление транзакций в БД сайта:
+	SQL:
+		call set_finances(customerID, date, accrued, penalty, recalculation, paid);
+			customerID - ID пользователя (program_customer_id)
+			date - YYYY-MM-DD
+			accrued - Начислено, формат - 2 знака после запятой
+			penalty - Пени, формат - 2 знака после запятой
+			recalculation - Перерасчёт, формат - 2 знака после запятой
+			paid - Оплачено, формат - 2 знака после запятой
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения транзакций в БД сайта.
+	
+*) Добавление расчёта ОДН в БД сайта:
+	SQL:
+		call set_odns(customerID, date, type, units, real_overall_consumption, estimated_overall_consumption, counters_consumption, norm_consumption, diff, total_square, distribution_coefficient, flat_square, odn_value);
+			customerID - ID пользователя (program_customer_id)
+			date - YYYY-MM-DD
+			type - Вид начисления, строка
+			units - Единицы измерения, строка
+			real_overall_consumption - Реальное потребление общедомовых приборов учёта - 2 знака после запятой
+			estimated_overall_consumption - Расчётное потребление общедомовых приборов учёта - 2 знака после запятой
+			counters_consumption - Потребление квартирных приборов учёта по счётчикам - 2 знака после запятой
+			norm_consumption - Потребление квартирных приборов учёта по нормативу - 2 знака после запятой
+			diff - Разница в потреблении, отнесённая на ОДН - 2 знака после запятой
+			total_square - Общая площадь дома - 2 знака после запятой
+			distribution_coefficient - Коэффициент распределения - 5 знаков после запятой
+			flat_square - Площадь квартиры - 2 знака после запятой
+			odn_value - Объём коммунального ресурса, отнесённый на площадь квартиры - 2 знака после запятой
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения расчёта ОДН в БД сайта.
+
+*) Добавление сообщений в БД сайта:
+	SQL:
+		call set_messages(customerID, message, date, file, file_type, file_name);
+			customerID - ID пользователя (program_customer_id)
+			message - Text
+			date - YYYY-MM-DD HH:II:SS
+			[optional] file - Mediumblob
+			[optional] file_type - Example: text/plain
+			[optional] file_name - Example: Моя_картинка.jpg
+			-------
+			P.S. Если какой-либо из переменных нет, то вместо неё передаётся либо "", либо 0, в зависимости от типа переменной.
+	Success return:
+		status -> 1
+	Данная процедура необходима для занесения сообщений в БД сайта.
+	
+*) Переключение в рабочий режим:
+	SQL:
+		call update_mode(0);
+	Success return:
+		status -> 1
+	Данная процедура отключает режим обновления и возвращает сайт в рабочий режим.

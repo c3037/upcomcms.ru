@@ -1,0 +1,14 @@
+Weekly:
+	sudo apt-get update
+	sudo apt-get upgrade
+	sudo apt-get dist-upgrade
+	sudo scout_realtime
+	sudo reboot
+	
+/boot - delete not used kernels [ROOT]:
+	df -h
+	apt-get clean
+	aptitude search ~ilinux-image
+	uname -r
+	sudo apt-get autoremove linux-image-3.2.0-23-generic
+	apt-get autoremove

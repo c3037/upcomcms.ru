@@ -1,0 +1,2 @@
+PHP Version	5.3.6 + ionCube Loader
+MySQL 5.0.8

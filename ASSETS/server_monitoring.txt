@@ -1,0 +1,48 @@
+*) Доступность сервера
+	ping-admin.ru
+	
+*) Текущая нагрузка на сервер
+	sudo apt-get install ruby-full
+	sudo gem install scout_realtime
+	sudo scout_realtime
+	sudo scout_realtime stop
+	sudo gem uninstall scout_realtime
+	
+	PuTTY(SSH Tunnel):
+		In current connection
+		Connection -> SSH -> Tunnels
+		Source Port : 5555
+		Destination: ServerIP:5555
+		Local
+	Browser:
+		http://localhost:5555/
+		
+*) История нагрузки на сервер
+
+*) Анализатор логов доступа и ошибок
+	USER ACCESS:
+		last
+		lastlog
+	SSH AUTH:
+		sudo nano /var/log/auth.log
+	FAIL2BAN LOGS:
+		sudo nano /var/log/fail2ban.log
+	UFW LOGS:
+		sudo nano /var/log/ufw.log
+	MYSQL LOGS:
+		sudo nano /var/log/mysql/error.log
+	VSFTPD LOGS:
+		sudo nano /var/log/vsftpd.log
+	WEBAPP LOGS:
+		sudo nano /var/www/upcomcms.ru/cab/error.log
+	APACHE LOGS:
+		sudo nano /var/log/apache2/error.log
+		sudo nano /var/log/apache2/access.log
+		sudo nano /var/log/apache2/other_vhosts_access.log
+
+*) Анализатор посещений и посетителей
+	Google Analytics
+	
+*) Свободное место + слушаемые порты
+	df -h
+	sudo netstat -lntup | grep LISTEN

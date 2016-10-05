@@ -1,0 +1,572 @@
+Виртуализация VPS - KVM
+
+================================
+
+ssh_user - ssh user
+upcomcms.ru - website name
+82.146.39.94 - website ip
+ftp_user - ftp user
+remote - mysql user
+program - mysql user
+webapp - mysql user
+
+================================
+
+*. Обновление системы и программ:
+	apt-get update
+	apt-get upgrade
+	apt-get dist-upgrade
+	apt-get install nano
+	
+	nano ~/.nanorc ->
+	ADD:
+	include /usr/share/nano/sh.nanorc
+	include /usr/share/nano/php.nanorc
+	
+	nano ~/.bashrc ->
+	UnCOMMENT: force_color_prompt=yes
+	
+*. Установка локали:
+	dpkg-reconfigure tzdata
+	locale
+	locale -a
+	locale-gen ru_RU.UTF-8
+	dpkg-reconfigure locales
+	update-locale LANG=ru_RU.UTF-8
+	
+	nano /etc/initramfs-tools/initramfs.conf
+	:END -> FRAMEBUFFER=Y
+	
+	update-initramfs -u
+	
+	dpkg-reconfigure console-setup
+	:SELECT -> UTF-8 -> . Combined - Latin; Slavic Cyrillic; Greek -> TerminusBold -> 16
+	
+	reboot
+	date
+	
+*. Файл подкачки:
+	swapon -s
+	free -m
+	df -h
+	fallocate -l 3G /swapfile
+	ls -lh /swapfile
+	chmod 600 /swapfile
+	ls -lh /swapfile
+	mkswap /swapfile
+	swapon /swapfile
+	swapon -s
+	free -m
+	
+	nano /etc/fstab
+	:END -> 
+	/swapfile   none    swap    sw    0   0
+	
+	cat /proc/sys/vm/swappiness
+	cat /proc/sys/vm/vfs_cache_pressure
+	
+	nano /etc/sysctl.conf
+	:END -> 
+	vm.swappiness=10
+	vm.vfs_cache_pressure=50
+	
+*. Системные переменные, защищаемся от некоторых видов атак:
+	nano /etc/sysctl.conf
+	:END ->
+	net.ipv4.icmp_echo_ignore_broadcasts = 1
+	net.ipv4.icmp_ignore_bogus_error_responses = 1
+	net.ipv4.tcp_syncookies = 1
+	net.ipv4.conf.all.accept_source_route = 0
+	net.ipv4.conf.default.accept_source_route = 0
+	net.ipv4.conf.all.rp_filter = 1
+	net.ipv4.conf.default.rp_filter = 1
+	net.ipv4.ip_forward = 0
+	net.ipv4.conf.all.send_redirects = 0
+	net.ipv4.conf.default.send_redirects = 0
+	kernel.exec-shield = 1
+	kernel.randomize_va_space = 1
+	
+	reboot
+	swapon -s
+	
+*. Пользователи и группы:
+	passwd root
+	#cut -d: -f1 /etc/passwd
+	#sudo userdel ssh_user
+	#sudo rm -r /home/ssh_user
+	adduser ssh_user
+	gpasswd -a ssh_user sudo
+	id ssh_user
+	reboot
+	
+*. SSH:
+	sudo nano /etc/ssh/sshd_config
+	:EDIT -> Port 4444 -> PermitRootLogin no 
+	:END -> AllowUsers ssh_user
+	
+	sudo service ssh restart
+	sudo netstat -lntup | grep LISTEN
+	
+	nano ~/.nanorc ->
+	ADD:
+	include /usr/share/nano/sh.nanorc
+	include /usr/share/nano/php.nanorc
+	
+	nano ~/.bashrc ->
+	UnCOMMENT: force_color_prompt=yes
+
+*. Apache:
+	sudo apt-get install apache2
+	
+	sudo nano /etc/apache2/apache2.conf
+	:END ->
+	ServerName localhost
+	AddType application/x-httpd-php .php .phtml
+	AddDefaultCharset UTF-8
+	
+	sudo service apache2 restart
+	
+	sudo nano /etc/hosts
+	:ADD ->
+	127.0.0.1	upcomcms.ru	www.upcomcms.ru cab.upcomcms.ru www.cab.upcomcms.ru
+	:DELETE -> 82.146.39.94 ...
+	
+	sudo nano /etc/apache2/sites-available/upcomcms.ru.conf
+	:ADD -> 
+	<VirtualHost *:80>
+		ServerName upcomcms.ru
+		DocumentRoot /var/www/upcomcms.ru/www
+		ServerAlias www.upcomcms.ru
+		<Directory /var/www/upcomcms.ru/www>
+			AllowOverride All
+		</Directory>
+	</VirtualHost>
+	
+	sudo nano /etc/apache2/sites-available/cab.upcomcms.ru.conf
+	:ADD -> 
+	<VirtualHost *:80>
+		ServerName cab.upcomcms.ru
+		DocumentRoot /var/www/upcomcms.ru/cab
+		ServerAlias www.cab.upcomcms.ru
+		<Directory /var/www/upcomcms.ru/cab>
+			AllowOverride All
+		</Directory>
+	</VirtualHost>
+	
+	sudo a2ensite upcomcms.ru.conf
+	sudo a2ensite cab.upcomcms.ru.conf
+	sudo mkdir /var/www/upcomcms.ru
+	sudo mkdir /var/www/upcomcms.ru/www
+	sudo mkdir /var/www/upcomcms.ru/ssl
+	sudo mkdir /var/www/upcomcms.ru/cab
+	sudo mkdir /var/www/upcomcms.ru/tmp
+	
+	sudo nano /var/www/upcomcms.ru/www/index.html
+	:END -> WWW:It works!
+	
+	sudo nano /var/www/upcomcms.ru/cab/index.html
+	:END -> CAB:It works!
+	
+	sudo rm /var/www/html/index.html
+	sudo nano /var/www/html/index.html
+	:ADD -> It works!
+	
+	sudo a2enmod rewrite ssl deflate expires
+	sudo apt-get install libapache2-mod-evasive
+	
+	sudo nano /etc/apache2/mods-available/mod-evasive.conf
+	:ADD ->
+	<IfModule mod_evasive20.c>
+	DOSHashTableSize 4096
+	DOSPageCount 5
+	DOSSiteCount 50
+	DOSPageInterval 1
+	DOSSiteInterval 1
+	DOSBlockingPeriod 10
+	</IfModule>
+	
+	sudo nano /etc/apache2/apache2.conf
+	:END -> 
+	ServerTokens ProductOnly
+	ServerSignature Off
+	
+	sudo service apache2 restart
+	sudo netstat -lntup | grep LISTEN
+	
+*. PHP:
+	sudo apt-get install php5 libapache2-mod-php5 php5-mcrypt
+	sudo rm /etc/apache2/mods-enabled/dir.conf
+	
+	sudo nano /etc/apache2/mods-enabled/dir.conf
+	ADD: ->
+	<IfModule mod_dir.c>
+          DirectoryIndex index.php index.html index.cgi index.pl index.xhtml index.htm
+	</IfModule>
+	
+	sudo service apache2 restart
+	
+	sudo nano /var/www/upcomcms.ru/www/index.php
+	ADD:->
+	<?php
+	phpinfo();
+	?>
+	sudo rm /var/www/upcomcms.ru/www/index.php
+	
+	sudo nano /etc/php5/apache2/php.ini
+	:EDIT+ADD ->
+	disable_functions=exec,passthru,shell_exec,system,proc_open,popen,curl_multi_exec,parse_ini_file,show_source
+	expose_php = Off
+	
+	sudo nano /etc/apache2/sites-available/upcomcms.ru.conf
+	:ADD ->
+	php_admin_value open_basedir /var/www/upcomcms.ru
+	php_admin_value upload_tmp_dir /var/www/upcomcms.ru/tmp
+	php_admin_value session.save_path /var/www/upcomcms.ru/tmp
+	</VirtualHost>
+	
+	sudo nano /etc/apache2/sites-available/cab.upcomcms.ru.conf
+	:ADD ->
+	php_admin_value open_basedir /var/www/upcomcms.ru
+	php_admin_value upload_tmp_dir /var/www/upcomcms.ru/tmp
+	php_admin_value session.save_path /var/www/upcomcms.ru/tmp
+	</VirtualHost>
+	
+	sudo service apache2 restart
+	
+	///////// http://linuxstar.ru/ustanovka-ioncube-php-loader-na-ubuntu-server-ili-centos.html
+	
+	wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+	||
+	wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
+	
+	tar xf ioncube_loaders_lin_x86-64.tar.gz
+	||
+	tar xf ioncube_loaders_lin_x86.tar.gz
+	
+	sudo mkdir /usr/local/ioncube
+	
+	sudo cp ioncube/ioncube_loader_lin_5.5* /usr/local/ioncube/
+
+	sudo nano /etc/php5/apache2/php.ini
+	:END ->
+	[Zend]
+	zend_extension = /usr/local/ioncube/ioncube_loader_lin_5.5.so
+	zend_extension_ts = /usr/local/ioncube/ioncube_loader_lin_5.5_ts.so
+	
+	sudo /etc/init.d/apache2 restart
+	
+	sudo nano /var/www/upcomcms.ru/www/index.php
+	:ADD ->
+	<?php
+	echo var_export(extension_loaded('ionCube Loader') ,true);
+	?>
+	
+	sudo rm /var/www/upcomcms.ru/www/index.php
+	
+*. MYSQL:
+	sudo apt-get install mysql-server php5-mysql
+	sudo mysql_install_db
+	sudo /usr/bin/mysql_secure_installation
+	:SELECT -> n -> y*4
+	
+	sudo nano /etc/mysql/my.cnf
+	:EDIT -> 
+	[mysqld]
+	port=3333
+	character-set-server = utf8
+	collation-server = utf8_general_ci
+	#bind-address=127.0.0.1
+	
+	sudo /etc/init.d/mysql restart
+	sudo netstat -lntup | grep LISTEN
+	sudo reboot
+	
+	//// http://dev.1c-bitrix.ru/community/webdev/user/54403/blog/2014/
+	
+	sudo mysql -u root -p
+	CREATE DATABASE upcomcms CHARACTER SET utf8 COLLATE utf8_general_ci;
+	
+	USE mysql;
+	
+	INSERT INTO `user` SET Host='%',User='remote',Password=PASSWORD('oWRjbOXQZfRa');
+	FLUSH PRIVILEGES;
+	GRANT ALL ON `upcomcms`.* TO 'remote'@'%';
+	FLUSH PRIVILEGES;
+	
+	INSERT INTO `user` SET Host='%',User='program',Password=PASSWORD('sWgynzNudtIN');
+	FLUSH PRIVILEGES;
+	GRANT EXECUTE ON `upcomcms`.* TO 'program'@'%';
+	FLUSH PRIVILEGES;
+	GRANT SELECT ON `mysql`.`proc` TO 'program'@'%';
+	FLUSH PRIVILEGES;
+	
+	INSERT INTO `user` SET Host='localhost',User='webapp',Password=PASSWORD('yzNorDnTvsit');
+	FLUSH PRIVILEGES;
+	GRANT SELECT, INSERT, UPDATE, DELETE ON `upcomcms`.* TO 'webapp'@'localhost';
+	FLUSH PRIVILEGES;
+	
+	SELECT User,Host FROM mysql.user;
+	SHOW GRANTS FOR 'remote'@'%';
+	SHOW GRANTS FOR 'program'@'%';
+	SHOW GRANTS FOR 'webapp'@'localhost';
+	exit;
+	
+*. FTP:
+	sudo apt-get install vsftpd
+	
+	sudo nano /etc/vsftpd.conf
+	:EDIT -> anonymous_enable=NO
+	:UNCOMMENT -> 
+	write_enable=YES
+	local_umask=022
+	chroot_local_user=YES
+	:END ->
+	allow_writeable_chroot=YES
+	pasv_enable=Yes
+	pasv_min_port=22201
+	pasv_max_port=22202
+	userlist_enable=YES
+	userlist_file=/etc/userftp.lst
+	userlist_deny=NO
+	force_dot_files=YES
+	listen_port=2222
+	pasv_addr_resolve=YES
+	pasv_address=82.146.39.94
+	
+	sudo nano /etc/userftp.lst
+	:ADD ->
+	ftp_user
+	
+	sudo service vsftpd restart
+	
+	sudo useradd -m ftp_user -s /usr/sbin/nologin
+	sudo passwd ftp_user
+	sudo nano /etc/shells
+	:END ->
+	/usr/sbin/nologin
+	
+	sudo usermod -d /var/www/upcomcms.ru ftp_user
+	sudo chown -R ftp_user /var/www/upcomcms.ru
+	sudo chmod -R 777 /var/www/upcomcms.ru
+	
+	sudo userdel ftp
+	
+	sudo service vsftpd restart
+	sudo netstat -lntup | grep LISTEN
+
+*. SendMail:
+	sudo apt-get install php-mail
+	sudo apt-get install sendmail
+	sudo sendmailconfig
+	:SELECT -> Y, Y, Y
+	sudo nano /etc/php5/apache2/php.ini
+	:EDIT ->
+	sendmail_path = /usr/sbin/sendmail -t -i
+	sudo service apache2 restart
+
+*. Firewall:
+	sudo apt-get install ufw
+	sudo ufw allow 80
+	sudo ufw allow 443
+	sudo ufw allow 2222
+	sudo ufw allow 3333
+	sudo ufw allow 4444
+	sudo ufw allow 22201
+	sudo ufw allow 22202
+	sudo ufw enable
+	sudo ufw default deny
+	sudo ufw status verbose
+	sudo ufw logging on
+	sudo ufw logging low
+	sudo nano /var/log/ufw.log
+	
+	sudo ufw disable
+	sudo ufw enable
+	sudo iptables -S
+	sudo reboot
+
+*. Fail2Ban:
+	sudo apt-get install fail2ban
+	sudo sed -i 's/RepeatedMsgReduction\ on/RepeatedMsgReduction\ off/' /etc/rsyslog.conf
+	sudo service rsyslog restart
+	sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+	sudo nano /etc/fail2ban/jail.local
+	:EDIT -> 
+	[ssh]
+	port = 4444
+	maxretry = 5
+	findtime = 600
+	bantime = 600
+	
+	sudo fail2ban-client set ssh unbanip 10.0.2.2
+	sudo nano /var/log/fail2ban.log
+	sudo iptables -S
+	
+	sudo nano /etc/mysql/my.cnf
+	:EDITADD -> 
+	[mysqld]
+	log_warnings = 2
+	log_error = /var/log/mysql/error.log
+	
+	sudo /etc/init.d/mysql restart
+	
+	sudo nano /etc/fail2ban/filter.d/mysql.conf
+	:ADD ->
+	# Fail2Ban configuration file
+	#
+	# Author: Andy Lear
+	#
+	# $Revision$
+	#
+
+	[Definition]
+
+	# Option: failregex
+	# Notes.: regex to match the password failures messages in the logfile. The
+	#          host must be matched by a group named "host". The tag "" can
+	#          be used for standard IP/hostname matching and is only an alias for
+	#          (?:::f{4,6}:)?(?P[\w\-.^_]+)
+	# Values: TEXT
+	#
+
+	failregex = Access denied for user .*@'<HOST>'.*$
+
+	# Option:  ignoreregex
+	# Notes.:  regex to ignore. If this regex matches, the line is ignored.
+	# Values:  TEXT
+	#
+	ignoreregex =
+	
+	sudo nano /etc/fail2ban/jail.local
+	:END -> 
+	[mysql]
+	enabled  = true
+	port     = 3333
+	filter   = mysql
+	logpath  = /var/log/mysql/error.log
+	maxretry = 5
+	findtime = 600
+	bantime = 600
+	
+	sudo nano /etc/fail2ban/jail.local
+	:EDIT -> 
+	[vsftpd]
+	enabled  = true
+	port=2222,22201,22202
+	maxretry = 5
+	findtime = 600
+	bantime = 600
+	
+	sudo nano /var/log/vsftpd.log
+	-> save
+	
+	sudo service fail2ban stop
+	sudo service fail2ban start
+	sudo reboot
+*. SSL:
+	https://www.digitalocean.com/community/tutorials/how-to-configure-vsftpd-to-use-ssl-tls-on-an-ubuntu-vps
+	
+	mkdir /var/www/upcomcms.ru/ssl/ftp
+	sudo openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout /var/www/upcomcms.ru/ssl/ftp/vsftpd.pem -out /var/www/upcomcms.ru/ssl/ftp/vsftpd.pem
+	sudo nano /etc/vsftpd.conf
+	:EDIT ->
+	rsa_cert_file=/var/www/upcomcms.ru/ssl/ftp/vsftpd.pem
+	rsa_private_key_file=/var/www/upcomcms.ru/ssl/ftp/vsftpd.pem
+	:END->
+	ssl_enable=YES
+	allow_anon_ssl=NO
+	force_local_data_ssl=YES
+	force_local_logins_ssl=YES
+	ssl_tlsv1=YES
+	ssl_sslv2=NO
+	ssl_sslv3=NO
+	require_ssl_reuse=NO
+	ssl_ciphers=HIGH
+	
+	sudo service vsftpd restart
+	
+	su -
+	cd /etc/mysql
+	openssl genrsa 2048 > ca-key.pem
+	openssl req -sha1 -new -x509 -nodes -days 3650 -key ca-key.pem > ca-cert.pem
+	openssl req -sha1 -newkey rsa:2048 -days 730 -nodes -keyout server-key.pem > server-req.pem
+	openssl rsa -in server-key.pem -out server-key.pem
+	openssl x509 -sha1 -req -in server-req.pem -days 730  -CA ca-cert.pem -CAkey ca-key.pem -set_serial 01 > server-cert.pem
+	nano /etc/mysql/my.cnf
+	:ADD->
+	[mysqld]
+	ssl-ca=/etc/mysql/ca-cert.pem
+	ssl-cert=/etc/mysql/server-cert.pem
+	ssl-key=/etc/mysql/server-key.pem
+	
+	service mysql restart
+	
+	mysql -u root -p
+	grant usage on *.* to 'remote'@'%' require subject '/C=RU/ST=Russian Federation/L=SomeCity/O=SomeCompany/OU=none/CN=upcomcms.ru/emailAddress=none';
+	grant usage on *.* to 'program'@'%' require ssl;
+	FLUSH PRIVILEGES;
+	exit;
+	
+	openssl req -sha1 -newkey rsa:2048 -days 730 -nodes -keyout client-key.pem > client-req.pem
+	openssl rsa -in client-key.pem -out client-key.pem
+	openssl x509 -sha1 -req -in client-req.pem -days 730 -CA ca-cert.pem -CAkey ca-key.pem -set_serial 01 > client-cert.pem
+	
+	mkdir /var/www/upcomcms.ru/ssl/mysql
+	cp ca-cert.pem /var/www/upcomcms.ru/ssl/mysql
+	cp client-key.pem /var/www/upcomcms.ru/ssl/mysql
+	cp client-cert.pem /var/www/upcomcms.ru/ssl/mysql
+	
+	-----
+	
+	mkdir /var/www/upcomcms.ru/ssl/apache
+	cd /var/www/upcomcms.ru/ssl/apache
+	sudo chown -R ftp_user /var/www/upcomcms.ru/ssl
+	
+	openssl genrsa -des3 -out server.key 2048
+	openssl rsa -in server.key -out server.key.insecure
+	mv server.key server.key.secure
+	mv server.key.insecure server.key
+	openssl req -new -key server.key -out server.csr
+	
+	Получить сертификат на оснве server.csr
+	?? openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+	
+	cat COMODORSADomainValidationSecureServerCA.crt COMODORSAAddTrustCA.crt AddTrustExternalCARoot.crt >> bundle.crt
+	
+	sudo rm /etc/apache2/sites-available/default-ssl.conf
+	sudo nano /etc/apache2/sites-available/cab-ssl.conf
+	:EDIT+ADD ->
+	<VirtualHost *:443>
+		ServerName cab.upcomcms.ru
+		DocumentRoot /var/www/upcomcms.ru/cab
+		ServerAlias www.cab.upcomcms.ru
+		<Directory /var/www/upcomcms.ru/cab>
+			AllowOverride All
+		</Directory>
+		SSLEngine on
+		SSLCertificateFile /var/www/upcomcms.ru/ssl/apache/server.crt
+		SSLCertificateKeyFile /var/www/upcomcms.ru/ssl/apache/server.key
+		SSLCACertificateFile /var/www/upcomcms.ru/ssl/apache/bundle.crt
+	</VirtualHost>
+	
+	sudo nano /etc/apache2/sites-available/www-ssl.conf
+	:EDIT+ADD ->
+	<VirtualHost *:443>
+		ServerName upcomcms.ru
+		DocumentRoot /var/www/upcomcms.ru/www
+		ServerAlias www.upcomcms.ru
+		<Directory /var/www/upcomcms.ru/www>
+			AllowOverride All
+		</Directory>
+		SSLEngine on
+		SSLCertificateFile /var/www/upcomcms.ru/ssl/apache/server.crt
+		SSLCertificateKeyFile /var/www/upcomcms.ru/ssl/apache/server.key
+		SSLCACertificateFile /var/www/upcomcms.ru/ssl/apache/bundle.crt
+	</VirtualHost>
+	
+	sudo a2ensite cab-ssl.conf
+	sudo a2ensite www-ssl.conf
+	sudo service apache2 reload
+	sudo service apache2 restart
+	
+	sudo reboot
